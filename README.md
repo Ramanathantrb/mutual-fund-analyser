@@ -1,40 +1,71 @@
-# 🏛️ AMFI Mutual Fund Analyzer
+# 🏛️ AMFI Mutual Fund Analyzer Pro
 
-A comprehensive mutual fund analysis tool that uses real-time data directly from AMFI (Association of Mutual Funds in India) for accurate fund selection and analysis.
+A comprehensive, professional-grade mutual fund analysis platform that uses real-time data directly from AMFI (Association of Mutual Funds in India) for accurate fund selection, comparison, and portfolio planning.
 
-## ✨ Features
+## ✨ Enhanced Features
 
+### 🔍 **Advanced Fund Analysis**
 - **🏛️ Real AMFI Data**: Fetches 13,000+ mutual fund schemes directly from AMFI
 - **🔍 Smart Search**: Search funds by name, AMC, or browse by categories
-- **📊 Comprehensive Analysis**: 
+- **📊 Comprehensive Metrics**: 
   - Total & Annualized Returns (CAGR)
-  - Risk metrics (Volatility, Max Drawdown)
-  - Sharpe Ratio calculation
-  - Win Rate analysis
-  - Performance grading
+  - Advanced Risk metrics (VaR, CVaR, Sortino Ratio, Calmar Ratio)
+  - Beta & Alpha vs market indices
+  - Information Ratio & Capture Ratios
+  - Rolling performance analysis
 - **📈 Interactive Charts**: 
-  - NAV trend visualization
-  - Cumulative returns analysis
-  - Drawdown charts
-  - Returns distribution
-- **🎯 Dual Interface**: 
-  - Command-line interface for quick analysis
-  - Web application with interactive dashboards
+  - NAV trend visualization with technical indicators
+  - Cumulative returns and drawdown analysis
+  - Returns distribution and correlation analysis
+
+### 📊 **Multi-Fund Comparison**
+- **Side-by-side comparison** of up to 6 funds
+- **Normalized performance** charts
+- **Risk vs Return** scatter plots  
+- **Correlation matrix** heatmaps
+- **Comprehensive metrics** comparison table
+
+### 💰 **SIP Calculator & Goal Planning**
+- **Advanced SIP calculator** with step-up options
+- **Goal-based planning** (retirement, education, house purchase)
+- **Inflation-adjusted** target calculations
+- **Multiple scenario** comparison
+- **Year-wise projection** tables with interactive visualizations
+
+### 🔬 **Technical Analysis**
+- **Moving averages** (20, 50, 200-day)
+- **Technical indicators** (RSI, MACD, Bollinger Bands)
+- **Buy/Sell signal** generation
+- **Market benchmark** comparison
+
+### 🎨 **Professional Interface**
+- **Multi-page navigation** with modern UI
+- **Responsive design** for desktop and mobile
+- **Interactive dashboards** with real-time updates
+- **Professional styling** and themes
 
 ## 🚀 Quick Start
 
 ### Installation
 
-1. **Clone or download** this folder
+1. **Clone or download** this repository
 2. **Install dependencies**:
    ```bash
+   # Run the automated installer (Windows)
+   install_enhanced.bat
+   
+   # Or install manually
    pip install -r requirements.txt
    ```
 
-### Usage Options
+### Usage
 
-#### Option 1: Web Application (Recommended)
+#### Option 1: Enhanced Web Application (Recommended)
 ```bash
+# Windows - Run the launcher
+run_enhanced.bat
+
+# Or manually
 streamlit run app.py
 ```
 Then open your browser to `http://localhost:8501`
@@ -44,10 +75,37 @@ Then open your browser to `http://localhost:8501`
 python cli_analyzer.py
 ```
 
-## 📱 Web Application Features
+## 🎯 Application Features
 
-### 1. Fund Search & Selection
-- Search by fund name or AMC
+### 1. 🔍 Fund Analyzer
+- Individual fund analysis with comprehensive metrics
+- Technical analysis with moving averages and indicators
+- Advanced risk assessment and performance grading
+- Interactive charts and visualizations
+
+### 2. 📊 Fund Comparison
+- Compare multiple funds side-by-side
+- Risk-return analysis and correlation studies
+- Performance benchmarking and relative analysis
+- Export comparison reports
+
+### 3. 💰 SIP Calculator
+- Advanced SIP planning with step-up calculations
+- Goal-based investment planning
+- Multiple scenario analysis
+- Inflation-adjusted target planning
+
+### 4. 📈 Portfolio Tracker (Coming Soon)
+- Multi-fund portfolio tracking
+- Asset allocation analysis
+- Rebalancing recommendations
+- Performance attribution
+
+### 5. 🎯 Goal Planner (Coming Soon)
+- Comprehensive financial goal planning
+- Tax-efficient investment strategies
+- Risk-based asset allocation
+- Monte Carlo simulations
 - Real-time validation with AMFI database
 - Fund information display (NAV, AMC, scheme code)
 

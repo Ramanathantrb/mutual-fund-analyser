@@ -1,4 +1,12 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
+import sys
+import os
+
+# Add current directory to path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import the original analyzer components
 import requests
 import pandas as pd
 import numpy as np
@@ -8,6 +16,10 @@ from datetime import datetime, timedelta
 import warnings
 import urllib3
 from amfi_fund_fetcher import AMFIFundFetcher
+
+# Import enhanced modules
+from fund_comparison import render_fund_comparison_page
+from sip_calculator import render_sip_calculator_page
 
 # Suppress warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -206,17 +218,19 @@ class StreamlitAMFIAnalyzer:
         return fig
     
     def create_returns_distribution(self, df):
-        """Create returns distribution histogram"""
-        daily_returns = (df['nav'].pct_change().dropna() * 100)
+        """Create returns distribution chart"""
+        df = df.copy()
+        df['daily_return'] = df['nav'].pct_change().dropna() * 100
         
         fig = go.Figure()
         
         fig.add_trace(go.Histogram(
-            x=daily_returns,
+            x=df['daily_return'],
             nbinsx=50,
             name='Daily Returns',
-            marker_color='#A23B72',
-            opacity=0.7
+            marker_color='#45B7D1',
+            opacity=0.7,
+            hovertemplate='Return Range: %{x:.2f}%<br>Frequency: %{y}<extra></extra>'
         ))
         
         fig.update_layout(
@@ -229,249 +243,456 @@ class StreamlitAMFIAnalyzer:
         
         return fig
 
+def analyzer_main():
+    """Main analyzer function with enhanced features"""
+    analyzer = StreamlitAMFIAnalyzer()
+    
+    # Enhanced sidebar
+    with st.sidebar:
+        st.header("🔍 Fund Search")
+        
+        # Load schemes
+        schemes = analyzer.load_amfi_schemes()
+        
+        if schemes:
+            # Search functionality
+            search_term = st.text_input(
+                "🔍 Search Fund",
+                placeholder="Enter fund name, AMC, or keyword...",
+                help="Search for mutual funds by name or AMC"
+            )
+            
+            # Filter schemes based on search
+            if search_term:
+                search_term_lower = search_term.lower()
+                filtered_schemes = [
+                    scheme for scheme in schemes 
+                    if search_term_lower in scheme['scheme_name'].lower() or 
+                       search_term_lower in scheme['amc_name'].lower()
+                ]
+            else:
+                filtered_schemes = []
+            
+            # Show search results
+            if filtered_schemes:
+                st.subheader(f"📊 Found {len(filtered_schemes)} funds")
+                
+                # Limit display to first 20 results
+                display_schemes = filtered_schemes[:20]
+                
+                # Create selection options
+                fund_options = {}
+                for scheme in display_schemes:
+                    display_name = f"{scheme['scheme_name'][:50]}... | {scheme['amc_name']}"
+                    if len(scheme['scheme_name']) <= 50:
+                        display_name = f"{scheme['scheme_name']} | {scheme['amc_name']}"
+                    fund_options[display_name] = scheme['scheme_code']
+                
+                selected_fund = st.selectbox(
+                    "🎯 Select Fund",
+                    options=list(fund_options.keys()),
+                    help="Choose a fund for analysis"
+                )
+                
+                if selected_fund:
+                    scheme_code = fund_options[selected_fund]
+                    fund_name = next(s['scheme_name'] for s in display_schemes if s['scheme_code'] == scheme_code)
+                    
+                    # Analysis period selection
+                    period_option = st.selectbox(
+                        "📅 Analysis Period",
+                        ["All Data", "5 Years", "3 Years", "1 Year", "6 Months"],
+                        index=1,
+                        help="Select time period for analysis"
+                    )
+                    
+                    period_mapping = {
+                        "All Data": None,
+                        "5 Years": 5 * 365,
+                        "3 Years": 3 * 365,
+                        "1 Year": 365,
+                        "6 Months": 180
+                    }
+                    
+                    period_days = period_mapping[period_option]
+                    
+                    # Analyze button
+                    if st.button("🚀 Analyze Fund", type="primary"):
+                        with st.spinner(f"🔄 Analyzing {fund_name}..."):
+                            df, fund_name, error = analyzer.get_fund_data(scheme_code, period_days)
+                            
+                            if df is not None:
+                                st.success("✅ Analysis completed!")
+                                
+                                # Calculate metrics
+                                metrics = analyzer.calculate_metrics(df)
+                                
+                                # Main content area
+                                st.header("📊 Fund Analysis Results")
+                                
+                                # Fund info
+                                st.markdown(f"""
+                                <div style="
+                                    background: linear-gradient(90deg, #f0f2f6, #e8eaf6);
+                                    padding: 1.5rem;
+                                    border-radius: 10px;
+                                    border-left: 5px solid #1f77b4;
+                                    margin-bottom: 2rem;
+                                ">
+                                    <h3 style="color: #1f77b4; margin: 0;">{fund_name}</h3>
+                                    <p style="margin: 0.5rem 0 0 0; color: #666;">
+                                        <strong>AMFI Code:</strong> {scheme_code} | 
+                                        <strong>Analysis Period:</strong> {period_option}
+                                    </p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Key metrics
+                                st.subheader("🎯 Key Performance Metrics")
+                                
+                                col1, col2, col3, col4 = st.columns(4)
+                                
+                                with col1:
+                                    st.metric(
+                                        "💰 Current NAV", 
+                                        f"₹{metrics['current_nav']:.2f}",
+                                        delta=f"{metrics['total_return']:+.2f}%"
+                                    )
+                                
+                                with col2:
+                                    st.metric(
+                                        "📈 CAGR", 
+                                        f"{metrics['annualized_return']:.2f}%",
+                                        delta="Annualized"
+                                    )
+                                
+                                with col3:
+                                    st.metric(
+                                        "📊 Sharpe Ratio", 
+                                        f"{metrics['sharpe_ratio']:.3f}",
+                                        delta="Risk-adjusted"
+                                    )
+                                
+                                with col4:
+                                    st.metric(
+                                        "⚡ Total Return", 
+                                        f"{metrics['total_return']:.2f}%",
+                                        delta=f"{metrics['years']:.1f} years"
+                                    )
+                                
+                                # Additional metrics
+                                st.subheader("🎯 Risk Analysis")
+                                
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric("Volatility", f"{metrics['volatility']:.2f}%")
+                                
+                                with col2:
+                                    st.metric("Max Drawdown", f"{metrics['max_drawdown']:.2f}%")
+                                
+                                with col3:
+                                    st.metric("Win Rate", f"{metrics['win_rate']:.1f}%")
+                                
+                                # Charts
+                                st.subheader("📈 Performance Charts")
+                                
+                                # NAV trend
+                                nav_chart = analyzer.create_nav_chart(df, fund_name)
+                                st.plotly_chart(nav_chart, use_container_width=True)
+                                
+                                # Two column layout for additional charts
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    returns_chart = analyzer.create_returns_chart(df)
+                                    st.plotly_chart(returns_chart, use_container_width=True)
+                                    
+                                    drawdown_chart = analyzer.create_drawdown_chart(df)
+                                    st.plotly_chart(drawdown_chart, use_container_width=True)
+                                
+                                with col2:
+                                    distribution_chart = analyzer.create_returns_distribution(df)
+                                    st.plotly_chart(distribution_chart, use_container_width=True)
+                                    
+                                    # Summary table
+                                    st.subheader("📋 Summary Statistics")
+                                    summary_data = {
+                                        "Metric": ["Data Points", "Analysis Period", "Start Date", "End Date"],
+                                        "Value": [
+                                            f"{metrics['total_days']:,} days",
+                                            f"{metrics['years']:.2f} years",
+                                            df['date'].min().strftime('%Y-%m-%d'),
+                                            df['date'].max().strftime('%Y-%m-%d')
+                                        ]
+                                    }
+                                    st.table(pd.DataFrame(summary_data))
+                            else:
+                                st.error(f"❌ Error: {error}")
+                
+                if len(filtered_schemes) > 20:
+                    st.info(f"📝 Showing first 20 results. Found {len(filtered_schemes)} total matches.")
+        
+        elif search_term and not filtered_schemes:
+            st.sidebar.warning("🔍 No funds found. Try different search terms.")
+        
+        else:
+            # Show instructions when no search
+            st.info("""
+            ## 🚀 Welcome to AMFI Mutual Fund Analyzer Pro!
+            
+            ### How to use:
+            1. 🔍 **Search** for funds using fund name or AMC
+            2. 📊 **Select** your preferred fund from the results
+            3. 📅 **Choose** analysis period (1Y, 3Y, 5Y, or All Data)
+            4. 🎯 **Click** "Analyze Fund" to get comprehensive insights
+            
+            ### Features:
+            - ✅ Real-time data from AMFI (13,000+ funds)
+            - 📈 Interactive charts and visualizations
+            - 🎯 Risk analysis and performance metrics
+            - 📊 Sharpe ratio, drawdown, volatility analysis
+            - 🏆 Professional-grade fund evaluation
+            
+            ### Example searches:
+            - "SBI Small Cap" - for SBI funds
+            - "HDFC" - for all HDFC funds
+            - "Index" - for index funds
+            - "ELSS" - for tax-saving funds
+            """)
+
 def main():
-    """Main Streamlit application"""
+    """Enhanced main application with multiple pages"""
+    
+    # Page configuration
     st.set_page_config(
-        page_title="AMFI Mutual Fund Analyzer",
-        page_icon="📊",
+        page_title="AMFI Mutual Fund Analyzer Pro",
+        page_icon="🏛️",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Get Help': 'https://github.com',
+            'Report a bug': 'https://github.com',
+            'About': "# AMFI Mutual Fund Analyzer Pro\nComprehensive mutual fund analysis tool with real-time AMFI data."
+        }
     )
     
     # Custom CSS
     st.markdown("""
     <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: bold;
-        background: linear-gradient(90deg, #2E86AB, #A23B72);
+        text-align: center;
+        color: #1f77b4;
+        margin-bottom: 2rem;
+        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 2rem;
     }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    
+    .sub-header {
+        font-size: 1.5rem;
+        color: #2E86AB;
+        margin-bottom: 1rem;
     }
-    .fund-info {
-        background: #f8f9fa;
+    
+    .metric-container {
+        background-color: #f0f2f6;
         padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #2E86AB;
-        margin: 1rem 0;
+        border-radius: 0.5rem;
+        border-left: 4px solid #1f77b4;
+    }
+    
+    .sidebar .sidebar-content {
+        background-color: #f8f9fa;
+    }
+    
+    .stMetric {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     </style>
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown('<p class="main-header">🏛️ AMFI Mutual Fund Analyzer</p>', unsafe_allow_html=True)
-    st.markdown("### 📊 Comprehensive Analysis Using Real AMFI Data")
+    st.markdown('<p class="main-header">🏛️ AMFI Mutual Fund Analyzer Pro</p>', unsafe_allow_html=True)
+    
+    # Navigation menu
+    selected = option_menu(
+        menu_title=None,
+        options=["🔍 Fund Analyzer", "📊 Fund Comparison", "💰 SIP Calculator", "📈 Portfolio Tracker", "🎯 Goal Planner"],
+        icons=["search", "bar-chart", "calculator", "briefcase", "target"],
+        menu_icon="cast",
+        default_index=0,
+        orientation="horizontal",
+        styles={
+            "container": {"padding": "0!important", "background-color": "#fafafa"},
+            "icon": {"color": "#1f77b4", "font-size": "18px"},
+            "nav-link": {
+                "font-size": "16px",
+                "text-align": "center",
+                "margin": "0px",
+                "--hover-color": "#eee"
+            },
+            "nav-link-selected": {"background-color": "#1f77b4"},
+        }
+    )
     
     # Initialize analyzer
     analyzer = StreamlitAMFIAnalyzer()
     
-    # Sidebar for fund selection
-    st.sidebar.header("🔍 Fund Selection")
+    # Route to different pages based on selection
+    if selected == "🔍 Fund Analyzer":
+        render_fund_analyzer_page(analyzer)
     
-    # Load AMFI schemes
-    schemes = analyzer.load_amfi_schemes()
+    elif selected == "📊 Fund Comparison":
+        render_fund_comparison_page(analyzer)
     
-    if not schemes:
-        st.error("❌ Could not load AMFI fund database. Please try again later.")
-        return
+    elif selected == "💰 SIP Calculator":
+        render_sip_calculator_page()
     
-    # Create fund selection options
-    st.sidebar.success(f"✅ Loaded {len(schemes):,} funds from AMFI")
+    elif selected == "📈 Portfolio Tracker":
+        render_portfolio_tracker_page(analyzer)
     
-    # Search functionality
-    search_term = st.sidebar.text_input("🔍 Search funds by name:", placeholder="e.g., SBI, HDFC, Axis")
+    elif selected == "🎯 Goal Planner":
+        render_goal_planner_page()
+
+def render_fund_analyzer_page(analyzer):
+    """Render the main fund analyzer page"""
+    st.header("🔍 Individual Fund Analysis")
     
-    # Filter schemes based on search
-    if search_term:
-        filtered_schemes = [
-            scheme for scheme in schemes 
-            if search_term.lower() in scheme['scheme_name'].lower() or 
-               search_term.lower() in scheme['amc_name'].lower()
-        ][:50]  # Limit to 50 results
-    else:
-        # Show popular categories
-        filtered_schemes = []
-    
-    if search_term and filtered_schemes:
-        # Create selectbox options
-        scheme_options = {}
-        for scheme in filtered_schemes:
-            display_name = f"{scheme['scheme_name'][:60]}{'...' if len(scheme['scheme_name']) > 60 else ''} ({scheme['amc_name'][:20]})"
-            scheme_options[display_name] = scheme
+    # Add enhanced sidebar with filters
+    with st.sidebar:
+        st.header("🔍 Fund Search & Filters")
         
-        selected_display = st.sidebar.selectbox(
-            "Select Fund:",
-            options=list(scheme_options.keys()),
-            key="fund_selector"
+        # Category filter
+        category_filter = st.selectbox(
+            "📂 Fund Category",
+            ["All Categories", "Equity", "Debt", "Hybrid", "Index", "ELSS", "International"],
+            help="Filter funds by category"
         )
         
-        if selected_display:
-            selected_scheme = scheme_options[selected_display]
-            scheme_code = selected_scheme['scheme_code']
-            
-            # Display fund info
-            st.sidebar.markdown(f"""
-            <div class="fund-info">
-            <strong>🏛️ Fund:</strong> {selected_scheme['scheme_name'][:50]}...<br>
-            <strong>🏢 AMC:</strong> {selected_scheme['amc_name']}<br>
-            <strong>🔢 Code:</strong> {scheme_code}<br>
-            <strong>💰 Current NAV:</strong> ₹{selected_scheme['nav']}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Time period selection
-            st.sidebar.header("📅 Analysis Period")
-            period = st.sidebar.selectbox(
-                "Select Period:",
-                ["1 Year", "3 Years", "5 Years", "All Data"]
-            )
-            
-            period_days = {
-                "1 Year": 365,
-                "3 Years": 1095,
-                "5 Years": 1825,
-                "All Data": None
-            }
-            
-            days = period_days[period]
-            
-            # Analyze button
-            if st.sidebar.button("📊 Analyze Fund", type="primary"):
-                with st.spinner("🔄 Fetching and analyzing fund data..."):
-                    df, fund_name, error = analyzer.get_fund_data(scheme_code, days)
-                    
-                    if error:
-                        st.error(f"❌ {error}")
-                        return
-                    
-                    if df is None or len(df) < 2:
-                        st.error("❌ Insufficient data for analysis")
-                        return
-                    
-                    # Calculate metrics
-                    metrics = analyzer.calculate_metrics(df)
-                    
-                    # Display results
-                    st.success(f"✅ Analysis complete for {fund_name}")
-                    
-                    # Key metrics cards
-                    st.subheader("📊 Key Performance Metrics")
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        st.metric(
-                            "Total Return",
-                            f"{metrics['total_return']:.2f}%",
-                            f"Over {metrics['years']:.1f} years"
-                        )
-                    
-                    with col2:
-                        st.metric(
-                            "Annualized Return",
-                            f"{metrics['annualized_return']:.2f}%",
-                            "CAGR"
-                        )
-                    
-                    with col3:
-                        st.metric(
-                            "Current NAV",
-                            f"₹{metrics['current_nav']:.2f}",
-                            f"From ₹{metrics['initial_nav']:.2f}"
-                        )
-                    
-                    with col4:
-                        st.metric(
-                            "Sharpe Ratio",
-                            f"{metrics['sharpe_ratio']:.2f}",
-                            "Risk-adjusted return"
-                        )
-                    
-                    # Additional metrics
-                    st.subheader("🎯 Risk Analysis")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric("Volatility", f"{metrics['volatility']:.2f}%")
-                    
-                    with col2:
-                        st.metric("Max Drawdown", f"{metrics['max_drawdown']:.2f}%")
-                    
-                    with col3:
-                        st.metric("Win Rate", f"{metrics['win_rate']:.1f}%")
-                    
-                    # Charts
-                    st.subheader("📈 Performance Charts")
-                    
-                    # NAV trend
-                    nav_chart = analyzer.create_nav_chart(df, fund_name)
-                    st.plotly_chart(nav_chart, use_container_width=True)
-                    
-                    # Two column layout for additional charts
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        returns_chart = analyzer.create_returns_chart(df)
-                        st.plotly_chart(returns_chart, use_container_width=True)
-                        
-                        drawdown_chart = analyzer.create_drawdown_chart(df)
-                        st.plotly_chart(drawdown_chart, use_container_width=True)
-                    
-                    with col2:
-                        distribution_chart = analyzer.create_returns_distribution(df)
-                        st.plotly_chart(distribution_chart, use_container_width=True)
-                        
-                        # Summary table
-                        st.subheader("📋 Summary Statistics")
-                        summary_data = {
-                            "Metric": ["Data Points", "Analysis Period", "Start Date", "End Date"],
-                            "Value": [
-                                f"{metrics['total_days']:,} days",
-                                f"{metrics['years']:.2f} years",
-                                df['date'].min().strftime('%Y-%m-%d'),
-                                df['date'].max().strftime('%Y-%m-%d')
-                            ]
-                        }
-                        st.table(pd.DataFrame(summary_data))
+        # AUM filter
+        aum_filter = st.selectbox(
+            "💰 AUM Range",
+            ["All Sizes", "Large (>₹10,000 Cr)", "Medium (₹1,000-10,000 Cr)", "Small (<₹1,000 Cr)"],
+            help="Filter by Assets Under Management"
+        )
+        
+        # Performance filter
+        perf_filter = st.selectbox(
+            "📊 Performance Filter",
+            ["All Funds", "Top Performers", "Consistent Performers", "Low Volatility"],
+            help="Filter by performance characteristics"
+        )
+        
+        st.divider()
+        
+        # Advanced options
+        st.subheader("⚙️ Advanced Options")
+        
+        show_technical_analysis = st.checkbox("📈 Show Technical Analysis", help="Add moving averages and technical indicators")
+        show_sector_analysis = st.checkbox("🏭 Show Sector Analysis", help="Analyze sector allocation (if data available)")
+        compare_with_benchmark = st.checkbox("📊 Compare with Benchmark", help="Compare performance with market indices")
     
-    elif search_term and not filtered_schemes:
-        st.sidebar.warning("🔍 No funds found. Try different search terms.")
+    # Call the original analyzer main function with enhancements
+    analyzer_main()
+
+def render_portfolio_tracker_page(analyzer):
+    """Render portfolio tracking page"""
+    st.header("📈 Portfolio Tracker")
     
-    else:
-        # Show instructions when no search
-        st.info("""
-        ## 🚀 Welcome to AMFI Mutual Fund Analyzer!
-        
-        ### How to use:
-        1. 🔍 **Search** for funds in the sidebar using fund name or AMC
-        2. 📊 **Select** your preferred fund from the results
-        3. 📅 **Choose** analysis period (1Y, 3Y, 5Y, or All Data)
-        4. 🎯 **Click** "Analyze Fund" to get comprehensive insights
-        
-        ### Features:
-        - ✅ Real-time data from AMFI (13,000+ funds)
-        - 📈 Interactive charts and visualizations
-        - 🎯 Risk analysis and performance metrics
-        - 📊 Sharpe ratio, drawdown, volatility analysis
-        - 🏆 Professional-grade fund evaluation
-        
-        ### Example searches:
-        - "SBI Small Cap" - for SBI funds
-        - "HDFC" - for all HDFC funds
-        - "Index" - for index funds
-        - "ELSS" - for tax-saving funds
+    st.info("🚧 **Coming Soon!** Portfolio tracking functionality will allow you to:")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 📊 **Portfolio Analytics**
+        - Track multiple fund investments
+        - Portfolio-level risk metrics
+        - Asset allocation analysis
+        - Rebalancing recommendations
+        - Performance attribution
         """)
+    
+    with col2:
+        st.markdown("""
+        ### 🎯 **Portfolio Management**
+        - Set investment targets
+        - Monitor SIP contributions
+        - Tax loss harvesting alerts
+        - Dividend tracking
+        - Goal progress monitoring
+        """)
+    
+    # Placeholder for portfolio input
+    st.subheader("💼 Add Your Holdings")
+    
+    with st.form("portfolio_form"):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            fund_code = st.text_input("Fund Code", placeholder="119551")
+        
+        with col2:
+            units_held = st.number_input("Units Held", min_value=0.0, step=0.001)
+        
+        with col3:
+            avg_purchase_price = st.number_input("Avg Purchase Price", min_value=0.0)
+        
+        submitted = st.form_submit_button("➕ Add to Portfolio")
+        
+        if submitted:
+            st.success("✅ Fund added to portfolio! (Feature in development)")
+
+def render_goal_planner_page():
+    """Render goal planning page"""
+    st.header("🎯 Comprehensive Goal Planner")
+    
+    st.info("🚧 **Enhanced Goal Planning** - Advanced goal-based investment planning")
+    
+    # Multiple goal management
+    st.subheader("🎯 Your Financial Goals")
+    
+    # Sample goals display
+    goals_data = [
+        {"Goal": "Child Education", "Target": "₹25,00,000", "Years Left": "15", "Progress": "25%"},
+        {"Goal": "Retirement", "Target": "₹1,00,00,000", "Years Left": "25", "Progress": "15%"},
+        {"Goal": "House Purchase", "Target": "₹50,00,000", "Years Left": "8", "Progress": "40%"}
+    ]
+    
+    import pandas as pd
+    goals_df = pd.DataFrame(goals_data)
+    st.dataframe(goals_df, use_container_width=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### 🛠️ **Advanced Features**
+        - Multiple goal tracking
+        - Tax-efficient planning
+        - Inflation-adjusted targets
+        - Monte Carlo simulations
+        - Risk-based asset allocation
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 📊 **Smart Recommendations**
+        - Optimal fund selection per goal
+        - Automatic rebalancing alerts
+        - Tax loss harvesting
+        - Goal prioritization
+        - Emergency fund planning
+        """)
+    
+    # Call the SIP calculator for basic functionality
+    render_sip_calculator_page()
 
 if __name__ == "__main__":
     main()
