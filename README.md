@@ -1,6 +1,38 @@
 # 🏛️ AMFI Mutual Fund Analyzer Pro
 
-A comprehensive, professional-grade mutual fund analysis platform that uses real-time data directly from AMFI (Association of Mutual Funds in India) for accurate fund selection, comparison, and portfolio planning.
+A comprehensi## ✨ Key Features
+
+### 🔍 **Advanced Fund Analysis**
+- **Real-time data** directly from AMFI (13,000+ mutual fund schemes)
+- **Comprehensive metrics**: CAGR, volatility, Sharpe ratio, max drawdown, beta
+- **Risk assessment** with detailed performance attribution
+- **Historical performance** analysis with multiple time periods
+- **Actual expense ratios** from curated database (not estimates)
+
+### 📊 **Fund Comparison Tool**
+- **Side-by-side comparison** of up to 5 funds
+- **Risk vs Return** scatter plot analysis
+- **Performance metrics** table with actual expense ratios
+- **Winner/loser identification** across multiple criteria
+- **Interactive charts** for visual comparison
+
+### 🎯 **Smart Fund Screening**
+- **Multi-criteria filtering** with CAGR, expense ratio, fund category
+- **Plan type filtering** (Direct vs Regular)
+- **AMC-based screening** with real performance data
+- **NFO exclusion** and new fund filtering
+
+### 💰 **Enhanced Investment Calculators**
+- **SIP Calculator** with goal-based planning and inflation adjustment
+- **Lumpsum Calculator** with target analysis and years-to-goal calculation
+- **Combined planning** for existing investments + new SIP
+- **Real returns** (post-inflation) calculation
+
+### 💡 **Expense Analysis**
+- **Actual vs estimated** expense ratio indicators
+- **Impact analysis** on long-term returns
+- **Cost comparison** across fund categories
+- **Fee optimization** recommendationsgrade mutual fund analysis platform that uses real-time data directly from AMFI (Association of Mutual Funds in India) for accurate fund selection, comparison, and portfolio planning.
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-red)](https://streamlit.io)

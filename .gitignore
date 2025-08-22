@@ -153,3 +153,11 @@ outputs/
 # Legacy files (transitional)
 enhanced_quick_wins.py
 enhanced_app.py
+
+# Test and temporary files
+test_*.py
+find_*.py
+advanced_expense_fetcher.py
+real_expense_fetcher.py
+*.html
+amfi_scheme_*.html
