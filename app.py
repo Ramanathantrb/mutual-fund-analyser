@@ -416,42 +416,114 @@ def categorize_fund(fund_name: str) -> str:
 def get_actual_expense_ratio(scheme_code: str, fund_name: str) -> float:
     """Fetch actual expense ratio from multiple sources"""
     
-    # Try AMFI API for scheme details
+    # Try MF API first - sometimes has additional data
     try:
         response = requests.get(
-            f"https://www.amfiindia.com/modules/SchemeDetailsPopup.aspx?SchemeCode={scheme_code}",
+            f"https://api.mfapi.in/mf/{scheme_code}",
             timeout=10,
             verify=False
         )
         if response.status_code == 200:
-            content = response.text
-            # Look for expense ratio patterns in the HTML
-            import re
-            expense_patterns = [
-                r'expense\s*ratio[:\s]*(\d+\.?\d*)%?',
-                r'total\s*expense\s*ratio[:\s]*(\d+\.?\d*)%?',
-                r'ter[:\s]*(\d+\.?\d*)%?'
-            ]
-            
-            for pattern in expense_patterns:
-                matches = re.findall(pattern, content.lower())
-                if matches:
-                    try:
-                        return float(matches[0])
-                    except:
-                        continue
+            data = response.json()
+            # Check if expense ratio is in meta data
+            if 'meta' in data and isinstance(data['meta'], dict):
+                for key, value in data['meta'].items():
+                    if 'expense' in key.lower() and isinstance(value, (int, float, str)):
+                        try:
+                            return float(str(value).replace('%', ''))
+                        except:
+                            pass
     except:
         pass
     
-    # Try alternative data sources
-    try:
-        # ValueResearch or other financial data APIs could be added here
-        pass
-    except:
-        pass
+    # Try fact sheet URLs based on AMC
+    amc_name = fund_name.split(' ')[0].lower()
+    expense_ratio = try_factsheet_sources(scheme_code, fund_name, amc_name)
+    if expense_ratio:
+        return expense_ratio
     
-    # Fallback to estimation with better accuracy
+    # Try web scraping from fund house websites
+    expense_ratio = try_amc_websites(fund_name, amc_name)
+    if expense_ratio:
+        return expense_ratio
+    
+    # Fallback to improved estimation
     return estimate_expense_ratio_improved(fund_name)
+
+def try_factsheet_sources(scheme_code: str, fund_name: str, amc_name: str) -> float:
+    """Try to extract expense ratio from fact sheets"""
+    
+    # Common fact sheet URL patterns
+    fund_slug = fund_name.replace(' ', '-').lower()
+    
+    fact_sheet_patterns = [
+        f"https://www.axismf.com/docs/default-source/fact-sheets/{fund_slug}.pdf",
+        f"https://www.quantmutual.com/downloads/factsheets/{fund_slug}.pdf",
+        f"https://www.hdfcfund.com/content/dam/hdfcfund/documents/product-documents/{fund_slug}.pdf",
+        f"https://www.sbimf.com/Docs/FactSheet/{fund_name.replace(' ', '_')}.pdf"
+    ]
+    
+    for url in fact_sheet_patterns:
+        try:
+            response = requests.head(url, timeout=5)
+            if response.status_code == 200:
+                # If PDF exists, try to extract expense ratio
+                # Note: This would require PDF parsing which is complex
+                # For now, we'll note that the fact sheet exists
+                print(f"📄 Found fact sheet: {url}")
+                # Could implement PDF parsing here with PyPDF2 or similar
+        except:
+            continue
+    
+    return None
+
+def try_amc_websites(fund_name: str, amc_name: str) -> float:
+    """Try to scrape expense ratio from AMC websites"""
+    
+    # Known patterns for major AMCs
+    search_patterns = {
+        'axis': f"https://www.axismf.com/fund-performance-nav/axis-{fund_name.replace(' ', '-').lower()}",
+        'hdfc': f"https://www.hdfcfund.com/mutual-funds/{fund_name.replace(' ', '-').lower()}",
+        'sbi': f"https://www.sbimf.com/en-us/mutual-funds/{fund_name.replace(' ', '-').lower()}",
+        'icici': f"https://www.icicipruamc.com/funds/{fund_name.replace(' ', '-').lower()}"
+    }
+    
+    if amc_name in search_patterns:
+        try:
+            url = search_patterns[amc_name]
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                content = response.text.lower()
+                
+                # Enhanced expense ratio patterns
+                patterns = [
+                    r'expense\s*ratio[:\s]*(\d+\.?\d*)%?',
+                    r'total\s*expense\s*ratio[:\s]*(\d+\.?\d*)%?',
+                    r'ter[:\s]*(\d+\.?\d*)%?',
+                    r'ongoing\s*charges[:\s]*(\d+\.?\d*)%?',
+                    r'management\s*fee[:\s]*(\d+\.?\d*)%?',
+                    r'(\d+\.?\d*)%?\s*expense\s*ratio',
+                    r'(\d+\.?\d*)%?\s*ter'
+                ]
+                
+                for pattern in patterns:
+                    matches = re.findall(pattern, content)
+                    if matches:
+                        try:
+                            expense_val = float(matches[0])
+                            # Sanity check: expense ratios are typically 0.1% to 3%
+                            if 0.05 <= expense_val <= 5.0:
+                                return expense_val
+                        except:
+                            continue
+        except:
+            pass
+    
+    return None
 
 def estimate_expense_ratio_improved(fund_name: str) -> float:
     """Improved expense ratio estimation with more accurate data"""
@@ -1007,37 +1079,78 @@ def show_fund_screener(schemes_data):
         else:
             st.warning("❌ No funds found matching your criteria. Try relaxing some filters.")
 
+def filter_funds(schemes, search_term):
+    """Filter funds based on search term"""
+    if not search_term:
+        return []
+    
+    search_lower = search_term.lower()
+    filtered = []
+    
+    for scheme in schemes:
+        scheme_name = scheme['scheme_name'].lower()
+        amc_name = scheme['amc_name'].lower()
+        
+        # Search in scheme name, AMC name, and scheme type
+        if (search_lower in scheme_name or 
+            search_lower in amc_name or
+            any(word in scheme_name for word in search_lower.split())):
+            display_name = f"{scheme['scheme_name']} ({scheme['amc_name']})"
+            filtered.append(display_name)
+    
+    # Sort by relevance (exact matches first, then partial matches)
+    def relevance_score(name):
+        name_lower = name.lower()
+        if search_lower in name_lower:
+            if name_lower.startswith(search_lower):
+                return 0  # Highest priority: starts with search term
+            else:
+                return 1  # Medium priority: contains search term
+        return 2  # Lowest priority: word matches
+    
+    filtered.sort(key=relevance_score)
+    return filtered[:100]  # Limit results
+
 def show_fund_comparison():
     """Show fund comparison feature"""
     st.header("📊 Fund Comparison Tool")
     
-    # Get list of available funds
-    with st.spinner("🔄 Loading fund list..."):
-        fund_fetcher = AMFIFundFetcher()
-        all_schemes = fund_fetcher.fetch_all_schemes()
+    # Use cached fund data
+    if 'fund_schemes' not in st.session_state:
+        with st.spinner("🔄 Loading fund list..."):
+            fund_fetcher = AMFIFundFetcher()
+            all_schemes = fund_fetcher.fetch_all_schemes()
+            st.session_state.fund_schemes = all_schemes
+    else:
+        all_schemes = st.session_state.fund_schemes
     
     if not all_schemes:
         st.error("❌ Could not load fund data. Please try again.")
         return
     
-    # Create fund options for selection
-    fund_options = [f"{scheme['scheme_name']} ({scheme['amc_name']})" for scheme in all_schemes[:1000]]  # Limit for performance
-    
     st.subheader("🎯 Select Funds to Compare")
+    st.info("💡 **Tip:** Use the search boxes below to find funds by name, AMC, or category")
     
+    # Create searchable fund selection
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("**Fund 1**")
-        fund1_selection = st.selectbox("Choose first fund", [""] + fund_options, key="fund1")
+        search1 = st.text_input("🔍 Search Fund 1", placeholder="e.g., Axis ELSS, SBI Large Cap...", key="search1")
+        fund1_options = filter_funds(all_schemes, search1) if search1 else []
+        fund1_selection = st.selectbox("Choose Fund 1", [""] + fund1_options[:50], key="fund1_select")
         
     with col2:
         st.markdown("**Fund 2**")
-        fund2_selection = st.selectbox("Choose second fund", [""] + fund_options, key="fund2")
+        search2 = st.text_input("🔍 Search Fund 2", placeholder="e.g., HDFC Mid Cap, ICICI Value...", key="search2")
+        fund2_options = filter_funds(all_schemes, search2) if search2 else []
+        fund2_selection = st.selectbox("Choose Fund 2", [""] + fund2_options[:50], key="fund2_select")
         
     with col3:
         st.markdown("**Fund 3 (Optional)**")
-        fund3_selection = st.selectbox("Choose third fund", [""] + fund_options, key="fund3")
+        search3 = st.text_input("🔍 Search Fund 3", placeholder="e.g., Parag Parikh, Mirae Asset...", key="search3")
+        fund3_options = filter_funds(all_schemes, search3) if search3 else []
+        fund3_selection = st.selectbox("Choose Fund 3", [""] + fund3_options[:50], key="fund3_select")
     
     # Analysis period
     period_options = {
