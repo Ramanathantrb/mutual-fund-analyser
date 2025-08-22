@@ -46,10 +46,14 @@ class AMFIFundFetcher:
                     date = parts[5].strip()
                     
                     if scheme_code and scheme_name and scheme_code.isdigit():
+                        # Determine scheme type
+                        scheme_type = self._determine_scheme_type(scheme_name)
+                        
                         schemes.append({
                             'scheme_code': scheme_code,
                             'scheme_name': scheme_name,
                             'amc_name': current_amc,
+                            'scheme_type': scheme_type,
                             'nav': nav,
                             'date': date
                         })
@@ -60,6 +64,23 @@ class AMFIFundFetcher:
         except Exception as e:
             print(f"❌ Error fetching AMFI schemes: {e}")
             return []
+    
+    def _determine_scheme_type(self, scheme_name):
+        """Determine scheme type based on name"""
+        name_lower = scheme_name.lower()
+        
+        if any(term in name_lower for term in ['equity', 'large cap', 'mid cap', 'small cap', 'multi cap', 'flexi cap']):
+            return 'Equity'
+        elif any(term in name_lower for term in ['debt', 'bond', 'gilt', 'liquid', 'ultra short', 'short term', 'medium term', 'long term']):
+            return 'Debt'
+        elif any(term in name_lower for term in ['hybrid', 'balanced', 'conservative', 'aggressive']):
+            return 'Hybrid'
+        elif any(term in name_lower for term in ['elss', 'tax saver', 'equity linked']):
+            return 'ELSS'
+        elif any(term in name_lower for term in ['index', 'etf']):
+            return 'Index'
+        else:
+            return 'Other'
     
     def search_schemes(self, search_term, limit=10):
         """Search for schemes by name"""

@@ -1,8 +1,12 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -45,6 +49,52 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+#Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
 # Environments
 .env
 .venv
@@ -53,6 +103,24 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
 
 # Streamlit
 .streamlit/
@@ -74,15 +142,14 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-cache/
+data/cache/
+*.csv
+*.xlsx
+*.json
+temp/
 logs/
-*.log
-fund_data.db
-*.pkl
-old_version/
-backup/
+outputs/
 
-# Temporary files
-*.tmp
-*.temp
-app_old.py
+# Legacy files (transitional)
+enhanced_quick_wins.py
+enhanced_app.py

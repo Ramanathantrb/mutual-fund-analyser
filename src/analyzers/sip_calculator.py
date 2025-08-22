@@ -7,10 +7,20 @@ from datetime import datetime, timedelta
 import math
 
 class SIPCalculator:
-    """SIP Calculator with goal-based planning"""
+    """Enhanced SIP Calculator with goal-based planning and inflation adjustment"""
     
     def __init__(self):
-        pass
+        # Common financial goals with typical timeframes
+        self.goal_templates = {
+            'Retirement': {'typical_years': 30, 'inflation_sensitive': True},
+            'Child Education': {'typical_years': 15, 'inflation_sensitive': True},
+            'Child Marriage': {'typical_years': 20, 'inflation_sensitive': True},
+            'House Purchase': {'typical_years': 10, 'inflation_sensitive': True},
+            'Car Purchase': {'typical_years': 5, 'inflation_sensitive': False},
+            'Emergency Fund': {'typical_years': 1, 'inflation_sensitive': False},
+            'Vacation': {'typical_years': 2, 'inflation_sensitive': False},
+            'Custom Goal': {'typical_years': 10, 'inflation_sensitive': True}
+        }
     
     def calculate_sip_returns(self, monthly_amount, annual_return, years):
         """Calculate SIP returns using compound interest formula"""
@@ -47,7 +57,85 @@ class SIPCalculator:
         
         return required_sip
     
-    def generate_sip_projection_table(self, monthly_amount, annual_return, years):
+    def calculate_inflation_adjusted_goal(self, current_cost, years, inflation_rate=6):
+        """Calculate future value of goal considering inflation"""
+        future_value = current_cost * ((1 + inflation_rate/100) ** years)
+        return future_value
+    
+    def calculate_goal_based_sip(self, goal_amount, years, expected_return, inflation_rate=0):
+        """Calculate SIP required for a specific goal"""
+        # Adjust goal for inflation if specified
+        if inflation_rate > 0:
+            adjusted_goal = self.calculate_inflation_adjusted_goal(goal_amount, years, inflation_rate)
+        else:
+            adjusted_goal = goal_amount
+        
+        required_sip = self.calculate_required_sip(adjusted_goal, expected_return, years)
+        
+        return {
+            'original_goal': goal_amount,
+            'inflation_adjusted_goal': adjusted_goal,
+            'required_monthly_sip': required_sip,
+            'total_investment': required_sip * years * 12,
+            'inflation_impact': adjusted_goal - goal_amount
+        }
+    
+    def calculate_step_up_sip(self, initial_amount, annual_return, years, step_up_rate=10):
+        """Calculate SIP with annual step-up"""
+        monthly_rate = annual_return / 12 / 100
+        total_value = 0
+        yearly_projections = []
+        
+        for year in range(1, years + 1):
+            # Calculate stepped up amount for this year
+            current_sip = initial_amount * ((1 + step_up_rate/100) ** (year - 1))
+            
+            # Calculate value for this year's contributions
+            months_in_year = 12
+            if monthly_rate == 0:
+                year_value = current_sip * months_in_year
+            else:
+                year_value = current_sip * (((1 + monthly_rate) ** months_in_year - 1) / monthly_rate) * (1 + monthly_rate)
+            
+            # Compound previous years' value
+            if year > 1:
+                total_value = total_value * (1 + annual_return/100) + year_value
+            else:
+                total_value = year_value
+            
+            yearly_projections.append({
+                'year': year,
+                'monthly_sip': current_sip,
+                'annual_investment': current_sip * 12,
+                'cumulative_value': total_value,
+                'cumulative_investment': sum(p['annual_investment'] for p in yearly_projections)
+            })
+        
+        total_invested = sum(p['annual_investment'] for p in yearly_projections)
+        total_returns = total_value - total_invested
+        
+        return {
+            'final_value': total_value,
+            'total_invested': total_invested,
+            'total_returns': total_returns,
+            'return_percentage': (total_returns / total_invested) * 100 if total_invested > 0 else 0,
+            'yearly_projections': yearly_projections
+        }
+    
+    def compare_sip_scenarios(self, base_amount, annual_return, years):
+        """Compare different SIP scenarios"""
+        scenarios = {}
+        
+        # Regular SIP
+        regular = self.calculate_sip_returns(base_amount, annual_return, years)
+        scenarios['Regular SIP'] = regular
+        
+        # Step-up SIPs
+        for step_up in [5, 10, 15]:
+            step_up_result = self.calculate_step_up_sip(base_amount, annual_return, years, step_up)
+            scenarios[f'Step-up {step_up}%'] = step_up_result
+        
+        return scenarios
         """Generate year-wise SIP projection"""
         projections = []
         cumulative_invested = 0

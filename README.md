@@ -2,51 +2,101 @@
 
 A comprehensive, professional-grade mutual fund analysis platform that uses real-time data directly from AMFI (Association of Mutual Funds in India) for accurate fund selection, comparison, and portfolio planning.
 
-## ✨ Enhanced Features
-
-### 🔍 **Advanced Fund Analysis**
-- **🏛️ Real AMFI Data**: Fetches 13,000+ mutual fund schemes directly from AMFI
-- **🔍 Smart Search**: Search funds by name, AMC, or browse by categories
-- **📊 Comprehensive Metrics**: 
-  - Total & Annualized Returns (CAGR)
-  - Advanced Risk metrics (VaR, CVaR, Sortino Ratio, Calmar Ratio)
-  - Beta & Alpha vs market indices
-  - Information Ratio & Capture Ratios
-  - Rolling performance analysis
-- **📈 Interactive Charts**: 
-  - NAV trend visualization with technical indicators
-  - Cumulative returns and drawdown analysis
-  - Returns distribution and correlation analysis
-
-### 📊 **Multi-Fund Comparison**
-- **Side-by-side comparison** of up to 6 funds
-- **Normalized performance** charts
-- **Risk vs Return** scatter plots  
-- **Correlation matrix** heatmaps
-- **Comprehensive metrics** comparison table
-
-### 💰 **SIP Calculator & Goal Planning**
-- **Advanced SIP calculator** with step-up options
-- **Goal-based planning** (retirement, education, house purchase)
-- **Inflation-adjusted** target calculations
-- **Multiple scenario** comparison
-- **Year-wise projection** tables with interactive visualizations
-
-### 🔬 **Technical Analysis**
-- **Moving averages** (20, 50, 200-day)
-- **Technical indicators** (RSI, MACD, Bollinger Bands)
-- **Buy/Sell signal** generation
-- **Market benchmark** comparison
-
-### 🎨 **Professional Interface**
-- **Multi-page navigation** with modern UI
-- **Responsive design** for desktop and mobile
-- **Interactive dashboards** with real-time updates
-- **Professional styling** and themes
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-red)](https://streamlit.io)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## 🚀 Quick Start
 
 ### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Ramanathantrb/mutual-fund-analyser.git
+   cd mutual-fund-analyser
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the application**
+   ```bash
+   # Main application
+   streamlit run app.py
+   
+   # Or use the Windows batch file
+   start.bat
+   ```
+
+## ✨ Enhanced Features
+
+### 🔍 **Advanced Fund Analysis**
+- **🏛️ Real AMFI Data**: Fetches 13,000+ mutual fund schemes directly from AMFI
+- **📊 Comprehensive Metrics**: CAGR, Sharpe Ratio, Sortino Ratio, VaR, CVaR
+- **💰 Expense Analysis**: TER comparison, Direct vs Regular impact
+- **📈 Technical Indicators**: Moving averages, RSI, MACD, Bollinger Bands
+
+### 📊 **Multi-Fund Comparison**
+- **Side-by-side comparison** of up to 6 funds
+- **Risk vs Return** scatter plots  
+- **Correlation analysis** and peer benchmarking
+- **Performance attribution** and factor analysis
+
+### 🎯 **Smart Fund Screening**
+- **Advanced filtering** by category, AMC, expense ratio
+- **Performance-based screening** with customizable criteria
+- **ESG and thematic** fund identification
+- **Automated recommendations** based on risk profile
+
+### ⚖️ **Peer Group Analysis**
+- **Category-wise benchmarking** against peer funds
+- **Percentile rankings** and quartile analysis
+- **Relative performance** tracking over time
+- **Best-in-class** fund identification
+
+### 💰 **Enhanced SIP Planning**
+- **Goal-based planning** (retirement, education, house purchase)
+- **Inflation-adjusted** calculations
+- **Step-up SIP** optimization
+- **Multiple scenario** analysis with Monte Carlo simulations
+
+### � **Portfolio Management**
+- **Multi-fund portfolio** tracking
+- **Asset allocation** analysis and rebalancing alerts
+- **Performance attribution** and risk decomposition
+- **Tax optimization** and LTCG/STCG planning
+
+## 📁 Project Structure
+
+```
+AMFI_Mutual_Fund_Analyzer/
+├── src/                          # Source code
+│   ├── analyzers/               # Analysis modules
+│   │   ├── expense_analyzer.py  # Expense ratio analysis
+│   │   ├── peer_comparison.py   # Peer group comparison
+│   │   ├── fund_comparison.py   # Multi-fund comparison
+│   │   ├── sip_calculator.py    # SIP planning tools
+│   │   ├── advanced_analytics.py # Technical analysis
+│   │   └── enhanced_risk_metrics.py # Risk metrics
+│   ├── data/                    # Data modules
+│   │   └── amfi_fund_fetcher.py # AMFI data fetching
+│   └── ui/                      # User interface
+│       └── main_app.py          # Streamlit UI components
+├── docs/                        # Documentation
+│   ├── ENHANCEMENT_GUIDE.md     # Feature enhancement guide
+│   └── QUICK_WINS_GUIDE.md      # Quick wins documentation
+├── scripts/                     # Utility scripts
+│   ├── install_enhanced.bat     # Installation script
+│   ├── run_enhanced.bat         # Run script
+│   └── cli_analyzer.py          # Command-line interface
+├── tests/                       # Unit tests
+├── app.py                       # Main Streamlit application (stable)
+├── app_main.py                  # Enhanced application entry point
+├── requirements.txt             # Python dependencies
+└── README.md                    # This file
+```
 
 1. **Clone or download** this repository
 2. **Install dependencies**:
